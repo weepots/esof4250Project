@@ -1,6 +1,7 @@
 # importing needed libraries
 from flask import *
 from flask_bootstrap import Bootstrap
+import pyotp
 
 # configuring flask application
 app = Flask(__name__)
@@ -16,7 +17,6 @@ def index():
 
 @app.route("/login/")
 def login():
-
     return render_template("login.html")
 
 
@@ -32,12 +32,41 @@ def login_form():
         # authenticating submitted creds with demo creds
         if username == creds["username"] and password == creds["password"]:
             # inform users if creds are valid
-            flash("The credentials provided are valid", "success")
-            return redirect(url_for("login"))
+            # flash("The credentials provided are valid", "success")
+            # return redirect(url_for("login"))
+            return redirect(url_for("login_2fa"))
         else:
             # inform users if creds are invalid
             flash("You have supplied invalid login credentials!", "danger")
             return redirect(url_for("login"))
+
+
+secret = pyotp.random_base32()
+
+
+@app.route("/login/2fa/")
+def login_2fa():
+
+    # generating random secret key for authentication
+    return render_template("login_2fa.html", secret=secret)
+
+
+@app.route("/login/2fa/", methods=["POST"])
+def login_2fa_form():
+    # getting secret key used by user
+    secret = request.form.get("secret")
+    # getting OTP provided by user
+    otp = int(request.form.get("otp"))
+
+    # verifying submitted OTP with PyOTP
+    if pyotp.TOTP(secret).verify(otp):
+        # inform users if OTP is valid
+        flash("The TOTP 2FA token is valid", "success")
+        return redirect(url_for("login_2fa"))
+    else:
+        # inform users if OTP is invalid
+        flash("You have supplied an invalid 2FA token!", "danger")
+        return redirect(url_for("login_2fa"))
 
 
 # running flask server
